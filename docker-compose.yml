@@ -1,0 +1,25 @@
+services:
+  backend:
+    build: ./backend
+    container_name: bteq-bq-backend
+    environment:
+      - GCP_PROJECT=${GCP_PROJECT}
+      - GCP_LOCATION=${GCP_LOCATION:-us}
+      - GCS_BUCKET=${GCS_BUCKET}
+      - VERTEX_MODEL=${VERTEX_MODEL:-gemini-1.5-pro}
+      # ADC credentials (mount your SA key to /secrets/key.json)
+      - GOOGLE_APPLICATION_CREDENTIALS=/secrets/key.json
+    volumes:
+      - ./secrets:/secrets:ro
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: bteq-bq-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
