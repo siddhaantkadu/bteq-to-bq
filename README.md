@@ -63,10 +63,3 @@ uvicorn app.main:app --host 0.0.0.0 --port 8080
 Then POST:
 - `POST /v1/convert` with `{ "sql": "...", "mapping_csv": null }`
 
-## Notes on “99% accuracy”
-
-No converter can truthfully guarantee 99% correctness for *all* possible Teradata SQL.
-This project increases reliability by:
-- using Google’s translator first,
-- AI fallback with strict prompting,
-- validation heuristics (extend to BQ dry-run where schemas exist).
