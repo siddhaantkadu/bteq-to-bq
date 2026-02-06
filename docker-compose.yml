@@ -1,25 +1,13 @@
 services:
-  backend:
-    build: ./backend
-    container_name: bteq-bq-backend
+  bteq2bq:
+    build: .
+    ports:
+      - "8080:8080"
     environment:
-      - GCP_PROJECT=${GCP_PROJECT}
-      - GCP_LOCATION=${GCP_LOCATION:-us}
-      - GCS_BUCKET=${GCS_BUCKET}
-      - VERTEX_MODEL=${VERTEX_MODEL:-gemini-1.5-pro}
-      # ADC credentials (mount your SA key to /secrets/key.json)
-      - GOOGLE_APPLICATION_CREDENTIALS=/secrets/key.json
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
+      CLOUDSDK_CONFIG: /gcloud
+      VERTEX_LOCATION: ${VERTEX_LOCATION:-us-central1}
+      VERTEX_MODEL: ${VERTEX_MODEL:-gemini-1.5-pro}
+      GCP_PROJECT: ${GCP_PROJECT:-project-a9be9c09-ee2e-4b2b-817}
     volumes:
-      - ./secrets:/secrets:ro
-    ports:
-      - "8000:8000"
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: bteq-bq-frontend
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend
+      - ${HOME}/.config/gcloud:/gcloud:ro
