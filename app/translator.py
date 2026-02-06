@@ -38,32 +38,41 @@ def _unwrap_retry_error(e: Exception) -> str:
 @retry(stop=stop_after_attempt(3), wait=wait_exponential_jitter(initial=1, max=10))
 def translate_with_bq_migration(sql: str, project: str) -> str:
     """
-    BigQuery Migration Translation API.
-    Uses compatibility logic because enums differ across google-cloud-bigquery-migration versions.
+    BigQuery Migration Translation API (compatible across google-cloud-bigquery-migration versions).
     """
     from google.cloud import bigquery_migration_v2  # type: ignore
 
     client = bigquery_migration_v2.MigrationServiceClient()
     parent = f"projects/{project}/locations/us"
 
-    # Compatibility across versions:
-    # Newer versions expose SqlTranslationSourceDialect directly on module.
-    # Older versions expose it under TranslateQueryRequest.
-    if hasattr(bigquery_migration_v2, "SqlTranslationSourceDialect"):
-        src = bigquery_migration_v2.SqlTranslationSourceDialect.TERADATA
-        tgt = bigquery_migration_v2.SqlTranslationTargetDialect.BIGQUERY
-    else:
-        src = bigquery_migration_v2.TranslateQueryRequest.SqlTranslationSourceDialect.TERADATA
-        tgt = bigquery_migration_v2.TranslateQueryRequest.SqlTranslationTargetDialect.BIGQUERY
+    # Requests/enums can live in different places depending on version.
+    types = getattr(bigquery_migration_v2, "types", None)
 
-    # Call with kwargs to avoid mismatch issues across versions
+    # Prefer module-level enums if present, else use types.*
+    SrcEnum = getattr(bigquery_migration_v2, "SqlTranslationSourceDialect", None)
+    TgtEnum = getattr(bigquery_migration_v2, "SqlTranslationTargetDialect", None)
+
+    if SrcEnum is None and types is not None:
+        SrcEnum = getattr(types, "SqlTranslationSourceDialect", None)
+    if TgtEnum is None and types is not None:
+        TgtEnum = getattr(types, "SqlTranslationTargetDialect", None)
+
+    if SrcEnum is None or TgtEnum is None:
+        raise RuntimeError(
+            "Could not locate SqlTranslationSourceDialect/TargetDialect enums in bigquery_migration_v2. "
+            "Please check installed google-cloud-bigquery-migration version."
+        )
+
+    src = SrcEnum.TERADATA
+    tgt = TgtEnum.BIGQUERY
+
+    # Call translate_query with kwargs (avoids request class differences)
     resp = client.translate_query(
         parent=parent,
         source_dialect=src,
         target_dialect=tgt,
         query=sql,
     )
-
     return getattr(resp, "translated_query", "") or ""
 
 
